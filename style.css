@@ -43,7 +43,6 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
-
 /* Accessibility */
 .visually-hidden {
   position: absolute !important;
@@ -359,4 +358,7 @@ body {
 }
 @keyframes shimmer {
   100% { transform: translateX(100%); }
+h1 {
+  color: #3498db;
+a5bcdec8b5d861c56e6585c04892b837fc52887f
 }

@@ -1,75 +1,16 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>중고가격 트래커</title>
-  <link rel="stylesheet" href="./style.css">
+  <title>Hello GitHub</title>
 </head>
 <body>
-  <header class="header" role="banner">
-    <div class="container">
-      <div class="toolbar" aria-label="상단 영역" style="padding: var(--space-4) 0; gap: var(--space-4);">
-        <div aria-label="사이트명" style="font-weight:800; font-size: var(--fs-4); color: var(--text-strong);">중고가격 트래커</div>
-        <div style="margin-left:auto; display:flex; gap: var(--space-3); align-items:center;">
-          <button id="copyLink" class="btn-ghost" aria-label="링크 복사">🔗 링크 복사</button>
-        </div>
-      </div>
-
-      <div class="searchbar" role="search">
-        <input id="q" class="input" aria-label="검색어 입력" placeholder="키워드를 입력하세요" />
-        <button id="searchBtn" class="btn" aria-label="검색">검색</button>
-      </div>
-      <div id="recentSearches" class="recent-list" role="listbox" aria-label="최근 검색어" hidden></div>
-
-      <div class="toolbar" aria-label="필터 및 정렬">
-        <div class="tabs" role="tablist" aria-label="퀵 필터">
-          <button id="tabAll" role="tab" aria-selected="true" aria-controls="results" class="active">전체</button>
-          <button id="tabActive" role="tab" aria-selected="false" aria-controls="results">판매중</button>
-          <button id="tabSold" role="tab" aria-selected="false" aria-controls="results">판매완료</button>
-        </div>
-        <div style="display:flex; gap: var(--space-3); align-items:center; margin-left:auto;">
-          <label for="sortSelect" class="visually-hidden">정렬</label>
-          <select id="sortSelect" class="select" aria-label="정렬">
-            <option value="latest">최신순</option>
-            <option value="priceAsc">가격↑</option>
-            <option value="priceDesc">가격↓</option>
-          </select>
-          <label style="user-select:none; display:flex; gap:6px; align-items:center; color: var(--text-weak);">
-            <input type="checkbox" id="onlyFav" aria-label="즐겨찾기만 보기" /> 즐겨찾기만
-          </label>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <main role="main">
-    <div id="errorBanner" class="error-banner" role="alert" hidden>
-      <div class="error-banner__content">
-        <span class="error-banner__text">데이터를 불러오는 중 오류가 발생했습니다.</span>
-        <button id="retryBtn" class="error-banner__retry" aria-label="다시 시도">다시 시도</button>
-      </div>
-    </div>
-
-    <div id="results" class="grid" aria-live="polite" aria-busy="false"></div>
-
-    <section id="chartArea" hidden>
-      <div class="container">
-        <article class="card chart-card" aria-label="가격 추세 카드">
-          <div class="chart-header">
-            <h4 class="chart-title">가격 추세</h4>
-            <div class="chart-avg"><span aria-hidden="true">평균가</span> <strong id="chartAvg">-</strong></div>
-          </div>
-          <div class="chart-body">
-            <canvas id="priceChart" aria-label="가격 추세 차트"></canvas>
-          </div>
-        </article>
-      </div>
-    </section>
-    <div id="pager" class="pager" aria-label="페이지 내비게이션"></div>
-  </main>
-
-  <script src="./app.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <h1>처음 올리는 테스트 페이지</h1>
+  <p>이 파일은 깃허브 연결 연습용입니다.</p>
+  <div>
+    <input type="text" id="searchInput" placeholder="검색어를 입력하세요" />
+    <button id="searchButton">검색</button>
+  </div>
+  <script src="app.js"></script>
 </body>
 </html>
