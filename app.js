@@ -243,7 +243,7 @@ function render() {
     };
 
     if (pageItems.length === 0) {
-      resultsEl.innerHTML = '<div class="empty">�˻� ����� �����ϴ�</div>';
+      resultsEl.innerHTML = '<div class="empty">�˻� ����� �����ϴ�</div>';
     } else {
       const firstCount = Math.min(12, pageItems.length);
       const firstHTML = pageItems.slice(0, firstCount).map(buildCard).join('');
@@ -260,9 +260,9 @@ function render() {
   const prevDisabled = state.page <= 1;
   const nextDisabled = state.page >= totalPages;
   pagerEl.innerHTML = `
-    <button id="prevPage" ${prevDisabled ? 'disabled' : ''} aria-label="?�전 ?�이지">?�전</button>
-    <span aria-live="polite">?�이지 ${state.page} / ${totalPages}</span>
-    <button id="nextPage" ${nextDisabled ? 'disabled' : ''} aria-label="?�음 ?�이지">?�음</button>
+    <button id="prevPage" ${prevDisabled ? 'disabled' : ''} aria-label="?�전 ?�이지">?�전</button>
+    <span aria-live="polite">?�이지 ${state.page} / ${totalPages}</span>
+    <button id="nextPage" ${nextDisabled ? 'disabled' : ''} aria-label="?�음 ?�이지">?�음</button>
   `;
 
   resultsEl.setAttribute('aria-busy', 'false');
@@ -312,7 +312,7 @@ async function init() {
     const data = await res.json();
     state.items = Array.isArray(data) ? data : [];
   } catch (e) {
-    console.error('?�이??로드 ?�패', e);
+    console.error('?�이??로드 ?�패', e);
     state.items = [];
   }
 
@@ -393,9 +393,9 @@ async function init() {
     copyLinkBtn.addEventListener('click', async () => {
       try {
         await navigator.clipboard.writeText(location.href);
-        showToast('링크�?복사?�습?�다', { top: true, duration: 1500 });
+        showToast('링크�?복사?�습?�다', { top: true, duration: 1500 });
       } catch (_) {
-        showToast('링크 복사 ?�패', { top: true, duration: 1500 });
+        showToast('링크 복사 ?�패', { top: true, duration: 1500 });
       }
     });
   }
@@ -426,7 +426,7 @@ function renderRecentList(container, showIfEmpty = false) {
   container.innerHTML = list.map((q, i) => `
     <div class="recent-item" role="option" data-q="${q.replace(/</g,'&lt;').replace(/>/g,'&gt;')}">
       <span class="text">${q.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>
-      <button class="use-btn" aria-label="??검?�어�?검??>검??/button>
+      <button class="use-btn" aria-label="??검?�어�?검??>검??/button>
     </div>
   `).join('');
 
@@ -548,7 +548,7 @@ async function updateChartForQuery() {
       data: {
         labels: data.labels,
         datasets: [{
-          label: '?�균가',
+          label: '?�균가',
           data: data.avg,
           borderColor: '#2c7be5',
           backgroundColor: 'rgba(44, 123, 229, 0.08)',
@@ -566,7 +566,7 @@ async function updateChartForQuery() {
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: (ctx) => `?�균가: ${formatPrice(ctx.parsed.y)}`
+              label: (ctx) => `?�균가: ${formatPrice(ctx.parsed.y)}`
             }
           }
         },
@@ -580,7 +580,7 @@ async function updateChartForQuery() {
       }
     });
   } catch (e) {
-    console.error('차트 ?�이??로드 ?�패', e);
+    console.error('차트 ?�이??로드 ?�패', e);
     hideChart();
   }
 }
