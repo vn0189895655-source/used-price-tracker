@@ -4,16 +4,13 @@ const state = {
   tab: 'all', // all | active | sold
   sort: 'latest', // latest | priceAsc | priceDesc
   page: 1,
-  pageSize: 24,
+  pageSize: 20,
   items: [],
-  loading: false,
-  error: null,
   onlyFav: false,
   favorites: new Set()
 };
 
 const FAV_STORAGE_KEY = 'upt:favorites';
-const RECENT_Q_KEY = 'upt:recent-q';
 
 function loadFavorites() {
   try {
@@ -30,27 +27,6 @@ function saveFavorites() {
   } catch (_) { /* ignore */ }
 }
 
-function loadRecentQueries() {
-  try {
-    const raw = localStorage.getItem(RECENT_Q_KEY);
-    const arr = raw ? JSON.parse(raw) : [];
-    return Array.isArray(arr) ? arr.slice(0, 5) : [];
-  } catch (_) {
-    return [];
-  }
-}
-function saveRecentQueries(list) {
-  try { localStorage.setItem(RECENT_Q_KEY, JSON.stringify(list.slice(0,5))); } catch(_) {}
-}
-function addRecentQuery(q) {
-  q = (q || '').trim();
-  if (!q) return;
-  const list = loadRecentQueries();
-  const filtered = list.filter(x => x !== q);
-  filtered.unshift(q);
-  saveRecentQueries(filtered);
-}
-
 function isFav(id) { return state.favorites.has(Number(id)); }
 function toggleFav(id) {
   id = Number(id);
@@ -60,10 +36,10 @@ function toggleFav(id) {
 
 function formatPrice(n) {
   try {
-    return '\u20A9 ' + new Intl.NumberFormat('ko-KR').format(Number(n || 0));
+    return '?? + new Intl.NumberFormat('ko-KR').format(Number(n || 0));
   } catch (_) {
     const s = String(Math.floor(n || 0));
-    return '\u20A9 ' + s.replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');
+    return '?? + s.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   }
 }
 
@@ -112,94 +88,6 @@ function applyFilters(items) {
   return out;
 }
 
-function scrollToTopSmooth() {
-  try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_) { window.scrollTo(0,0); }
-}
-
-// Price formatter (KRW, no decimals)
-function formatPriceKR(n) {
-  try {
-    const fmt = new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 });
-    return fmt.format(Number(n || 0));
-  } catch (_) {
-    const s = String(Math.floor(n || 0));
-    return '\u20A9 ' + s.replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');
-  }
-}
-
-// URL sync helpers
-function buildUrlFromState() {
-  const params = new URLSearchParams();
-  if (state.q) params.set('q', state.q);
-  if (state.tab && state.tab !== 'all') params.set('tab', state.tab);
-  if (state.sort && state.sort !== 'latest') params.set('sort', state.sort);
-  if (state.page && state.page !== 1) params.set('page', String(state.page));
-  const qs = params.toString();
-  const base = location.pathname;
-  return qs ? `${base}?${qs}` : base;
-}
-
-function applyUrlToState(search) {
-  const params = new URLSearchParams(search || '');
-  state.q = (params.get('q') || '').trim();
-  const tab = params.get('tab');
-  state.tab = (tab === 'active' || tab === 'sold') ? tab : 'all';
-  const sort = params.get('sort');
-  state.sort = (sort === 'priceAsc' || sort === 'priceDesc') ? sort : 'latest';
-  const page = Number(params.get('page') || '1');
-  state.page = Number.isFinite(page) && page >= 1 ? page : 1;
-}
-
-function syncUrl(push = false) {
-  const url = buildUrlFromState();
-  if (push) history.pushState(null, '', url); else history.replaceState(null, '', url);
-}
-
-function showToast(message, { top = true, duration = 1500, actionText, onAction } = {}) {
-  const t = document.createElement('div');
-  t.className = 'toast';
-  t.textContent = message;
-  if (top) {
-    t.style.top = '16px';
-    t.style.bottom = 'auto';
-  }
-  if (actionText) {
-    const btn = document.createElement('button');
-    btn.className = 'btn-ghost';
-    btn.style.marginLeft = '8px';
-    btn.textContent = actionText;
-    if (onAction) btn.addEventListener('click', onAction);
-    const wrap = document.createElement('div');
-    wrap.style.display = 'flex';
-    wrap.style.alignItems = 'center';
-    wrap.style.gap = '8px';
-    wrap.appendChild(document.createTextNode(message));
-    wrap.appendChild(btn);
-    t.textContent = '';
-    t.appendChild(wrap);
-  }
-  document.body.appendChild(t);
-  // force repaint
-  requestAnimationFrame(() => t.classList.add('show'));
-  setTimeout(() => {
-    t.classList.remove('show');
-    setTimeout(() => t.remove(), 200);
-  }, duration);
-}
-
-function setLoading(v) { state.loading = !!v; }
-
-async function runQuery(pushHistory = true) {
-  setLoading(true);
-  showSkeletons(8);
-  scrollToTopSmooth();
-  await nextFrame();
-  render();
-  updateChartForQuery();
-  setLoading(false);
-  syncUrl(pushHistory);
-}
-
 function render() {
   const resultsEl = document.getElementById('results');
   const pagerEl = document.getElementById('pager');
@@ -214,48 +102,33 @@ function render() {
   const start = (state.page - 1) * state.pageSize;
   const pageItems = filtered.slice(start, start + state.pageSize);
 
-  // results (chunked render + eager preload first row)
-  {
-    const cols = (function(){ try { if (window.matchMedia && window.matchMedia("(min-width: 1024px)").matches) return 4; if (window.matchMedia && window.matchMedia("(min-width: 768px)").matches) return 3; } catch (_) {} return 2; })();
-    const firstRowCount = cols;
-    const buildCard = (it, idx) => {
-      const safeTitle = (it.title || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      const alt = `Preview image of ${safeTitle}`;
-      const fav = isFav(it.id);
-      const favText = fav ? 'Unfavorite' : 'Favorite';
-      const eager = idx < firstRowCount;
-      const loading = eager ? 'eager' : 'lazy';
-      const priority = eager ? 'high' : 'low';
-      return `
+  // results
+  const cards = pageItems.map(it => {
+    const safeTitle = (it.title || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const alt = `${safeTitle} ?∏ÎÑ§??;
+    const fav = isFav(it.id);
+    const favText = fav ? '??Ï¶êÍ≤®Ï∞æÍ∏∞' : '??Ï¶êÍ≤®Ï∞æÍ∏∞';
+    return `
       <article class="card" data-id="${it.id}">
-        <span class="badge" aria-label="platform">${it.platform || ''}</span>
-        <img class="thumb" src="${it.image}" alt="${alt}" loading="${loading}" fetchpriority="${priority}" decoding="async">
+        <span class="badge" aria-label="?åÎû´??>${it.platform || ''}</span>
+        <img class="thumb" src="${it.image}" alt="${alt}">
         <div class="content">
           <h3 class="title">${safeTitle}</h3>
-          <div class="price">${formatPriceKR(it.price)}</div>
+          <div class="price">${formatPrice(it.price)}</div>
           <div class="meta">${formatDate(it.listedAt)}</div>
-          <a href="${it.url}" target="_blank" rel="noopener" aria-label="Open">Open</a>
           <div style="margin-top:8px; display:flex; gap:8px; align-items:center;">
-            <button class="fav-btn${fav ? ' active' : ''}" aria-pressed="${fav ? 'true' : 'false'}" aria-label="Favorite">${favText}</button>
+            <a href="${it.url}" target="_blank" rel="noopener" aria-label="${it.platform || '?åÎû´??}?êÏÑú Î∞îÎ°úÍ∞ÄÍ∏?>Î∞îÎ°úÍ∞ÄÍ∏?/a>
+            <button class="fav-btn${fav ? ' active' : ''}" aria-pressed="${fav ? 'true' : 'false'}" aria-label="Ï¶êÍ≤®Ï∞æÍ∏∞">${favText}</button>
           </div>
         </div>
       </article>`;
-    };
+  }).join('');
+  resultsEl.innerHTML = cards || '<p>Í≤∞Í≥ºÍ∞Ä ?ÜÏäµ?àÎã§.</p>';
 
-    if (pageItems.length === 0) {
-      resultsEl.innerHTML = '<div class="empty">∞Àªˆ ∞·∞˙∞° æ¯Ω¿¥œ¥Ÿ</div>';
-    } else {
-      const firstCount = Math.min(12, pageItems.length);
-      const firstHTML = pageItems.slice(0, firstCount).map(buildCard).join('');
-      resultsEl.innerHTML = firstHTML;
-      if (pageItems.length > firstCount) {
-        requestAnimationFrame(() => {
-          const restHTML = pageItems.slice(firstCount).map(buildCard).join('');
-          resultsEl.insertAdjacentHTML('beforeend', restHTML);
-        });
-      }
-    }
+  if (pageItems.length === 0) {
+    resultsEl.innerHTML = '<p class="empty-hint">Í≤Ä??Í≤∞Í≥ºÍ∞Ä ?ÜÏäµ?àÎã§</p>';
   }
+
   // pager
   const prevDisabled = state.page <= 1;
   const nextDisabled = state.page >= totalPages;
@@ -291,9 +164,6 @@ async function init() {
   const pagerEl = document.getElementById('pager');
   const onlyFav = document.getElementById('onlyFav');
   const resultsEl = document.getElementById('results');
-  const recentEl = document.getElementById('recentSearches');
-  // Restore state from URL
-  try { applyUrlToState(location.search); } catch (_) { /* ignore */ }
 
   // favorites
   loadFavorites();
@@ -308,7 +178,7 @@ async function init() {
 
   // Load data
   try {
-    const res = await fetch('./data/listings.json');
+    const res = await fetch('/data/listings.json');
     const data = await res.json();
     state.items = Array.isArray(data) ? data : [];
   } catch (e) {
@@ -331,9 +201,10 @@ async function init() {
     searchBtn.addEventListener('click', async () => {
       state.q = (qInput?.value || '').trim();
       state.page = 1;
-      addRecentQuery(state.q);
-      if (recentEl) renderRecentList(recentEl);
-      await runQuery(true);
+      showSkeletons(8);
+      await nextFrame();
+      render();
+      updateChartForQuery();
     });
   }
   if (qInput) {
@@ -341,34 +212,31 @@ async function init() {
       if (e.key === 'Enter') {
         state.q = (qInput.value || '').trim();
         state.page = 1;
-        addRecentQuery(state.q);
-        if (recentEl) renderRecentList(recentEl);
-        await runQuery(true);
+        showSkeletons(8);
+        await nextFrame();
+        render();
+        updateChartForQuery();
       }
     });
-    qInput.addEventListener('focus', () => { if (recentEl) renderRecentList(recentEl, true); });
-    qInput.addEventListener('input', () => { if (recentEl) renderRecentList(recentEl, true); });
-    qInput.addEventListener('blur', () => { setTimeout(() => { if (recentEl) recentEl.setAttribute('hidden',''); }, 120); });
   }
 
-  if (tabAll) tabAll.addEventListener('click', async () => { state.tab = 'all'; state.page = 1; setActiveTabButton('all'); await runQuery(true); });
-  if (tabActive) tabActive.addEventListener('click', async () => { state.tab = 'active'; state.page = 1; setActiveTabButton('active'); await runQuery(true); });
-  if (tabSold) tabSold.addEventListener('click', async () => { state.tab = 'sold'; state.page = 1; setActiveTabButton('sold'); await runQuery(true); });
+  if (tabAll) tabAll.addEventListener('click', () => { state.tab = 'all'; state.page = 1; setActiveTabButton('all'); render(); });
+  if (tabActive) tabActive.addEventListener('click', () => { state.tab = 'active'; state.page = 1; setActiveTabButton('active'); render(); });
+  if (tabSold) tabSold.addEventListener('click', () => { state.tab = 'sold'; state.page = 1; setActiveTabButton('sold'); render(); });
 
   if (sortSelect) {
-    sortSelect.addEventListener('change', async () => {
+    sortSelect.addEventListener('change', () => {
       state.sort = sortSelect.value;
-      state.page = 1;
-      await runQuery(true);
+      render();
     });
   }
 
   if (pagerEl) {
-    pagerEl.addEventListener('click', async (e) => {
+    pagerEl.addEventListener('click', (e) => {
       const t = e.target;
       if (!(t instanceof HTMLElement)) return;
-      if (t.id === 'prevPage') { state.page -= 1; await runQuery(true); }
-      if (t.id === 'nextPage') { state.page += 1; await runQuery(true); }
+      if (t.id === 'prevPage') { state.page -= 1; render(); }
+      if (t.id === 'nextPage') { state.page += 1; render(); }
     });
   }
 
@@ -387,63 +255,12 @@ async function init() {
     });
   }
 
-  // Copy link
-  const copyLinkBtn = document.getElementById('copyLink');
-  if (copyLinkBtn) {
-    copyLinkBtn.addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(location.href);
-        showToast('ÎßÅÌÅ¨Î•?Î≥µÏÇ¨?àÏäµ?àÎã§', { top: true, duration: 1500 });
-      } catch (_) {
-        showToast('ÎßÅÌÅ¨ Î≥µÏÇ¨ ?§Ìå®', { top: true, duration: 1500 });
-      }
-    });
-  }
-
-  // Popstate (back/forward)
-  window.addEventListener('popstate', () => {
-    applyUrlToState(location.search);
-    setActiveTabButton(state.tab);
-    if (sortSelect) sortSelect.value = state.sort;
-    if (qInput) qInput.value = state.q;
-    render();
-    updateChartForQuery();
-  });
-
   // Initial UI
   setActiveTabButton(state.tab);
   if (sortSelect) sortSelect.value = state.sort;
   if (qInput) qInput.value = state.q;
   render();
   updateChartForQuery();
-  syncUrl(false);
-}
-
-function renderRecentList(container, showIfEmpty = false) {
-  const list = loadRecentQueries();
-  if (!list.length && !showIfEmpty) { container.setAttribute('hidden',''); return; }
-  container.removeAttribute('hidden');
-  container.innerHTML = list.map((q, i) => `
-    <div class="recent-item" role="option" data-q="${q.replace(/</g,'&lt;').replace(/>/g,'&gt;')}">
-      <span class="text">${q.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>
-      <button class="use-btn" aria-label="??Í≤Ä?âÏñ¥Î°?Í≤Ä??>Í≤Ä??/button>
-    </div>
-  `).join('');
-
-  container.onclick = async (e) => {
-    const t = e.target;
-    if (!(t instanceof HTMLElement)) return;
-    const item = t.closest('.recent-item');
-    if (!item) return;
-    const q = item.getAttribute('data-q') || '';
-    const input = document.getElementById('q');
-    if (input) input.value = q;
-    state.q = q;
-    state.page = 1;
-    addRecentQuery(state.q);
-    renderRecentList(container);
-    await runQuery(true);
-  };
 }
 
 // Helpers for loading UI
@@ -477,7 +294,7 @@ document.addEventListener('click', async (e) => {
     // Attempt to reload data
     showSkeletons(8);
     try {
-      const res = await fetch('./data/listings.json');
+      const res = await fetch('/data/listings.json');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       state.items = Array.isArray(data) ? data : [];
@@ -510,9 +327,9 @@ async function updateChartForQuery() {
   const q = (state.q || '').toLowerCase();
   let file = null;
   if (q.includes('iphone 13')) {
-    file = './data/prices-iphone-13.json';
+    file = '/data/prices-iphone-13.json';
   } else if (q.includes('a7c')) {
-    file = './data/prices-sony-a7c.json';
+    file = '/data/prices-sony-a7c.json';
   } else {
     hideChart();
     return;
@@ -534,12 +351,6 @@ async function updateChartForQuery() {
       return;
     }
     area.removeAttribute('hidden');
-    // Update avg text (latest average)
-    const avgEl = document.getElementById('chartAvg');
-    if (avgEl && Array.isArray(data.avg) && data.avg.length) {
-      const last = data.avg[data.avg.length - 1];
-      try { avgEl.textContent = formatPriceKR(last); } catch (_) { avgEl.textContent = String(last || '-'); }
-    }
 
     const ctx = canvas.getContext('2d');
     if (priceChart) priceChart.destroy();
@@ -551,12 +362,9 @@ async function updateChartForQuery() {
           label: '?âÍ∑†Í∞Ä',
           data: data.avg,
           borderColor: '#2c7be5',
-          backgroundColor: 'rgba(44, 123, 229, 0.08)',
-          borderWidth: 2,
+          backgroundColor: 'rgba(44, 123, 229, 0.2)',
           tension: 0.25,
-          pointRadius: 1,
-          pointHoverRadius: 3,
-          hitRadius: 8,
+          pointRadius: 2,
           fill: true
         }]
       },
@@ -584,8 +392,4 @@ async function updateChartForQuery() {
     hideChart();
   }
 }
-
-
-
-
 
